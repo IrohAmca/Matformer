@@ -11,11 +11,14 @@ from transformers import (
     Gemma3nForConditionalGeneration,
 )
 
+import config
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class GenerationRequest(BaseModel):
     prompt: str
+    model_size: str = "default"
     max_length: int = 100
     temperature: float = 0.7
     top_p: float = 0.9
@@ -140,6 +143,14 @@ class GemmaServeDeployment:
         self.model_name = model_name
         logger.info(f"GemmaServeDeployment initialized with {model_name}")
     
+
+    def _get_size_layers(self, model_size: str) -> List[int]:
+        if model_size in config.MODEL_CONFIG:
+            return config.MODEL_CONFIG[model_size].get("exclude_layers", [])
+        else:
+            logger.warning(f"Model size {model_size} not found in config, using default.")
+            return config.MODEL_CONFIG["default"].get("exclude_layers", [])
+    
     async def __call__(self, request) -> GenerationResponse:
         start_time = time.time()
 
@@ -150,6 +161,8 @@ class GemmaServeDeployment:
                 request_data = request
 
             generation_request = GenerationRequest(**request_data)
+
+
             generated_text = self.model.generate_text(
                 prompt=generation_request.prompt,
                 max_length=generation_request.max_length,
@@ -157,7 +170,7 @@ class GemmaServeDeployment:
                 top_p=generation_request.top_p,
                 top_k=generation_request.top_k,
                 do_sample=generation_request.do_sample,
-                layers_to_skip=generation_request.layers_to_skip
+                layers_to_skip=generation_request.layers_to_skip or self._get_size_layers(generation_request.model_size)
             )
             
             processing_time = time.time() - start_time

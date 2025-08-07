@@ -6,11 +6,15 @@ from ray import serve
 
 from gemma import GemmaServeDeployment
 
-print("Gemma Model Başlatılıyor...")
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+logging.info("Gemma Model Başlatılıyor...")
     
-device = "cpu"
+device = "cuda"
 num_gpus = 1 if device == "cuda" else 0
-print(f"Device: {device}")
+logging.info(f"Device: {device}")
     
 ray.init(ignore_reinit_error=True)
 serve.start(http_options={"host": "0.0.0.0", "port": 8000})
@@ -21,12 +25,12 @@ deployment = GemmaServeDeployment.options(
     
 serve.run(deployment, route_prefix="/")
     
-print("Hazır!")
-print("http://localhost:8000")
-print("Ctrl+C ile durdur")
+logging.info("Hazır!")
+logging.info("http://localhost:8000")
+logging.info("Ctrl+C ile durdur")
 
 def cleanup(sig, frame):
-    print("\nDurduruluyor...")
+    logging.info("\nDurduruluyor...")
     serve.shutdown()
     ray.shutdown()
     sys.exit(0)
